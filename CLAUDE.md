@@ -121,6 +121,18 @@ three `--no-*` flags from `update.yml`.
   past "Loading the board…". `index.html` now loads `app.js?v=2`; bump that query param on any future `app.js`
   change that doesn't already land in a differently-named file, since GH Pages' CDN cache is more persistent than
   its normal cache-control headers suggest.
+- [x] 2026-11-17, mobile/UI pass per Austin's feedback: found the real cause of the Board's "filter" looking
+  misaligned — the metric-selector pills under "How the odds have moved" just wrapped unevenly at phone widths;
+  now a clean 2-column grid under 720px (`.seg` media query). Also found `.wallet` (Playoff picture's team
+  selector + stat tiles) had no CSS rule at all — a leftover from the sportsbook strip — so it rendered as
+  unstyled smashed-together text; replaced with a `.row` + the existing `.stats` grid, same look as the Team
+  page. Moved "Seeds for everyone" to right after the headline/stats (was at the bottom); removed "Pick the
+  games" entirely (the chip buttons, the per-week game-picker grid, and the underlying `SC.picks`/`gkey` plumbing
+  in `scenarioSim`) since it added interaction complexity Austin didn't want — the simulator now always plays out
+  from the model's own win chances. The nav bar also squeezed into a narrow one-link-per-line column beside the
+  brand on phone widths (brand text left little room beside it); fixed by forcing `nav` to its own full-width row
+  under 720px so it wraps normally, 3-ish links per line. Verified with local Playwright screenshots at 390×844
+  (iPhone) and 1280×900 (desktop) before pushing — no console errors, no visual regressions on desktop.
 - [ ] Playoff weeks (this league's bracket runs to week 17 too, 8 teams, 3 rounds) tested on sample data only;
   recheck once ESPN posts the 2026 bracket.
 - [ ] D/ST statIds 89/90/92/93 unconfirmed (see Scoring above) — low priority, display-only.

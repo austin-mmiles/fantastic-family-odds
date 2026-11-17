@@ -17,6 +17,12 @@ a { color: inherit; }
 nav { display: flex; flex-wrap: wrap; gap: 4px 18px; flex: 1; }
 nav a { font: 600 1.15rem/1 var(--display); text-decoration: none; padding: 8px 0; border-bottom: 3px solid transparent; opacity: .8; }
 nav a[aria-current] { border-color: var(--board-ink); opacity: 1; }
+@media (max-width: 720px) {
+  .mast { gap: 2px 16px; padding: 10px clamp(16px, 4vw, 40px); }
+  .brand { font-size: 1.35rem; }
+  nav { flex: 1 1 100%; gap: 2px 14px; }
+  nav a { font-size: .98rem; padding: 4px 0; }
+}
 #banner { background: var(--hi); padding: 10px clamp(16px, 4vw, 40px); font-size: .92rem; border-bottom: 1px solid var(--rule); }
 main { max-width: 1180px; margin: 0 auto; padding: 28px clamp(16px, 4vw, 40px) 60px; }
 main:focus { outline: none; }
@@ -57,6 +63,11 @@ th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--ink); }
 .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--paper); }
 .seg button { font: 600 1.05rem/1 var(--display); padding: 9px 14px; background: none; border: 0; color: var(--muted); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--chalk); }
+@media (max-width: 720px) {
+  .seg { display: grid; grid-template-columns: repeat(2, 1fr); width: 100%; }
+  .seg button { padding: 10px 8px; font-size: .95rem; text-align: center; border-top: 1px solid var(--rule); }
+  .seg button:nth-child(-n+2) { border-top: 0; }
+}
 .row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 0 0 12px; }
 select.pick, input.pick { font: 500 1rem var(--body); padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); color: var(--ink); max-width: 100%; }
 
@@ -121,7 +132,6 @@ select.pick, input.pick { font: 500 1rem var(--body); padding: 8px 10px; border:
 
 /* notices, chips, tags */
 .note { background: var(--hi); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 14px; margin: 0 0 12px; font-size: .95rem; max-width: 80ch; }
-.chipbtn { font: 600 1rem var(--display); padding: 8px 12px; border-radius: 99px; border: 1px solid var(--rule); background: none; color: var(--ink); cursor: pointer; }
 .feed { list-style: none; padding: 0; margin: 0; max-width: 80ch; }
 .feed li { padding: 8px 0; border-bottom: 1px solid var(--rule); }
 .chip { font: 600 .82rem var(--display); padding: 2px 8px; border-radius: 99px; border: 1px solid var(--rule); }
@@ -130,19 +140,9 @@ select.pick, input.pick { font: 500 1rem var(--body); padding: 8px 10px; border:
 
 /* playoff picture */
 .callout { font-size: 1.15rem; max-width: 70ch; border-left: 5px solid var(--board); padding: 6px 0 6px 14px; margin: 0 0 8px; }
-.weeks { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin: 8px 0; }
-.gm { display: grid; gap: 0; margin: 0 0 8px; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--paper); }
-.gm.mine { border-color: var(--gold); border-width: 2px; }
-.gpick { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: 0; background: none; color: var(--ink); font: 500 .95rem var(--body); text-align: left; cursor: pointer; }
-.gpick + .gpick { border-top: 1px solid var(--rule); }
-.gpick i { margin-left: auto; font-style: normal; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
-.gpick.me { font-weight: 700; }
-.gpick:hover { background: var(--hi); }
-.gpick[aria-pressed="true"] { background: var(--board); color: var(--board-ink); } .gpick[aria-pressed="true"] i { color: var(--board-ink); }
 .seedgrid td, .seedgrid th { padding: 7px 8px; text-align: center; } .seedgrid td.l, .seedgrid th.l { text-align: left; }
 .seedgrid .cut { border-right: 3px solid var(--gold); }
 .seedgrid tr.is-on td.l { background: var(--hi); }
-.chipbtn:disabled { opacity: .45; cursor: default; }
 
 /* live week: freshness line */
 .livebar { margin: 0 0 14px; line-height: 1.7; font-size: .95rem; color: var(--muted); max-width: 90ch; }
