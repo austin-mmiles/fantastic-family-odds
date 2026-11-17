@@ -150,6 +150,19 @@ three `--no-*` flags from `update.yml`.
   team-picker ("Pick a team": the "Show me" select, stat tiles, headline, "What each finish gets you") below it —
   opposite of the previous pass's order, which Austin asked to flip back. Verified again with local Playwright
   screenshots (390×844 and 1280×900) before pushing.
+- [x] 2026-11-17, round 3 per Austin's feedback (phone screenshot showing "6-" / "4" splitting across two lines
+  and a "#1 seed" column): fixed the record-wrap by adding `white-space: nowrap` to `.rec-m`. Removed all
+  bye/#1-seed UI as insignificant for this league — verified first, rather than assumed, by reading
+  `pipeline/model.py`'s bracket sim: `byes = size - n_al` where `size = 1 << (n_al-1).bit_length()`; for this
+  league's `playoff_teams = 8` (a power of 2) that's 0 byes at every round (8→4→2→1), so the "#1 seed gets a bye"
+  copy was inherited from the Love Mahomies fork (7 playoff teams, a real bye) and never applied here. Also
+  confirmed reseeding is correctly implemented: `alive = np.sort(...)` re-sorts remaining teams by seed before
+  each round's pairing, so it's best-seed-left vs worst-seed-left every round as the league facts above state.
+  Removed (not just relabeled) the `bye` entry from `METRICS`, the "#1 seed" column from the Board table (header
+  + body cell), the "#1 seed" stat tile and "What each finish gets" column on the Playoff picture page, and the
+  "#1 seed chance" fallback metric in the "who to root for" copy; updated the scenarios lede to state the
+  reseeding rule and no-bye fact explicitly. Verified with local Playwright screenshots (390×844 iPhone UA/3x DSF
+  and 1280×900 desktop) before pushing — record never wraps, no bye/#1-seed references remain, no console errors.
 - [ ] Playoff weeks (this league's bracket runs to week 17 too, 8 teams, 3 rounds) tested on sample data only;
   recheck once ESPN posts the 2026 bracket.
 - [ ] D/ST statIds 89/90/92/93 unconfirmed (see Scoring above) — low priority, display-only.

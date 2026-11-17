@@ -74,7 +74,7 @@
   }
 
   // ---------- views ----------
-  const METRICS = { title: 'Win the title', playoffs: 'Make the playoffs', bye: 'Earn the #1 seed', final: 'Reach the final', exp_wins: 'Expected wins' };
+  const METRICS = { title: 'Win the title', playoffs: 'Make the playoffs', final: 'Reach the final', exp_wins: 'Expected wins' };
   let boardMetric = 'title';
 
   // ---------- sortable tables ----------
@@ -104,7 +104,7 @@
       ? `${esc(T[fav.id].name)} won the ${D.league.season} title.`
       : `${esc(T[fav.id].name)} leads the board at ${pct(fav.title)} to win it all.` + (mover && Math.abs(mover.d) >= 0.005 ? ` Biggest move since last week: ${esc(T[mover.r.id].name)}, ${mover.d > 0 ? 'up' : 'down'} ${Math.abs(100 * mover.d).toFixed(1)} points.` : '');
     const cols = [{ label: '', cls: 'rank' }, { label: 'Team', cls: 'l' }, { key: 'rec', label: 'Record', cls: 'hm' }, { key: 'pf', label: 'Points for', cls: 'hm' },
-      { key: 'playoffs', label: 'Playoffs' }, { key: 'bye', label: '#1 seed', cls: 'hm' }, { key: 'title', label: 'Title' }, { label: 'Price' },
+      { key: 'playoffs', label: 'Playoffs' }, { key: 'title', label: 'Title' }, { label: 'Price' },
       { key: 'delta', label: 'Since last week', cls: 'hm' }, { label: 'Title trend', cls: 'l hm' }];
     const sortVal = (r, k) => k === 'rec' ? (r.w + 0.5 * (r.t || 0)) / Math.max(1, r.w + r.l + (r.t || 0)) : k === 'delta' ? r.title - (prevSnap?.teams[r.id]?.title ?? r.title) : r[k];
     app.innerHTML = `<h1>${esc(D.league.name)} title odds, ${weekLabel.toLowerCase() === 'final' ? 'final' : weekLabel}</h1>
@@ -122,7 +122,7 @@
       const rows = byTitle.slice().sort((a, b) => boardSort.dir * (sortVal(a, boardSort.key) - sortVal(b, boardSort.key)));
       table.querySelector('thead tr').innerHTML = sortHead(cols, boardSort);
       $('#board-body', table).innerHTML = rows.map((r, i) => `<tr data-id="${r.id}"><td class="rank">${i + 1}</td><td class="l">${teamLink(r.id)}<span class="sub rec-m"> ${rec(r)}</span></td><td class="hm">${rec(r)}</td><td class="hm">${r.pf.toFixed(1)}</td>
-          <td>${pct(r.playoffs)}</td><td class="hm">${pct(r.bye)}</td><td><b>${pct(r.title)}</b></td><td class="price ${r.id === fav.id ? 'fav' : ''}">${price(r.title)}</td>
+          <td>${pct(r.playoffs)}</td><td><b>${pct(r.title)}</b></td><td class="price ${r.id === fav.id ? 'fav' : ''}">${price(r.title)}</td>
           <td class="hm">${delta(r.title, prevSnap?.teams[r.id]?.title)}</td><td class="l hm">${spark(series(r.id, 'title'), T[r.id].color)}</td></tr>`).join('');
     };
     drawBody();
@@ -347,13 +347,13 @@
     let headline = `${esc(T[me].name)} makes the playoffs in ${pct(p, p > 0.995 || p < 0.005 ? 1 : 0)} of ${N.toLocaleString('en-US')} simulated finishes, most often as the #${top(R.seed[mi]) + 1} seed.`;
     if (left && rows.length > 1 && lock && alive) headline += lock.w - cur.w <= 0 ? ' Even losing out keeps them in almost every time.' : ` ${lock.w - cur.w} more win${lock.w - cur.w === 1 ? '' : 's'} in the last ${left} all but locks it up` + (alive.w - cur.w > 0 ? `, and they need at least ${alive.w - cur.w} to have a chance.` : '.');
     // who to root for: this week's games that do not involve the team
-    const metric = p > 0.02 && p < 0.98 ? ['playoff chance', sd => share(sd, 0, k)] : R.seed[mi][0] / N > 0.01 && R.seed[mi][0] / N < 0.99 ? ['#1 seed chance', sd => sd[0]] : null;
+    const metric = p > 0.02 && p < 0.98 ? ['playoff chance', sd => share(sd, 0, k)] : null;
     const root = !metric ? [] : games.map((g, gi) => ({ g, gi })).filter(x => x.g.week === D.week && String(x.g.home) !== me && String(x.g.away) !== me && R.lev[x.gi].h > 50 && R.lev[x.gi].a > 50)
       .map(x => { const L = R.lev[x.gi], d = metric[1](L.hs[mi]) / L.h - metric[1](L.as[mi]) / L.a; return { win: d >= 0 ? x.g.home : x.g.away, lose: d >= 0 ? x.g.away : x.g.home, d: Math.abs(d) }; }).filter(x => x.d >= 0.004).sort((a, b) => b.d - a.d);
-    const all = ids.map((id, i) => ({ id, i, po: po(i), bye: R.seed[i][0] / N, top: top(R.seed[i]), avgW: R.avgW[i] })).sort((a, b) => b.po - a.po || b.avgW - a.avgW);
+    const all = ids.map((id, i) => ({ id, i, po: po(i), top: top(R.seed[i]), avgW: R.avgW[i] })).sort((a, b) => b.po - a.po || b.avgW - a.avgW);
     const heat = v => v < 0.005 ? '' : `background:color-mix(in srgb, var(--board) ${Math.round(8 + 72 * v)}%, transparent);${v > 0.45 ? 'color:var(--board-ink)' : ''}`;
     app.innerHTML = `<h1>Playoff picture</h1>
-      <p class="lede">How the remaining regular-season games are likely to shake out, from ${N.toLocaleString('en-US')} simulated finishes. The top ${k} seeds make the playoffs and the #1 seed gets a bye.</p>
+      <p class="lede">How the remaining regular-season games are likely to shake out, from ${N.toLocaleString('en-US')} simulated finishes. The top ${k} seeds make the playoffs; the bracket reseeds each round (best seed left plays worst seed left), and there's no bye.</p>
       <h2>Seeds for everyone</h2>
       <div class="scroll"><table class="seedgrid"><thead><tr><th class="l">Team</th><th>Wins</th><th>Playoffs</th>${ids.map((_, i) => `<th class="${i === k - 1 ? 'cut' : ''}">#${i + 1}</th>`).join('')}</tr></thead><tbody>
         ${all.map(x => `<tr class="${x.id === me ? 'is-on' : ''}"><td class="l">${teamLink(x.id)}</td><td>${x.avgW.toFixed(1)}</td><td><b>${pct(x.po, 0)}</b></td>${R.seed[x.i].map((c, i) => `<td class="${i === k - 1 ? 'cut' : ''}" style="${heat(c / N)}">${c / N >= 0.005 ? Math.round(100 * c / N) : ''}</td>`).join('')}</tr>`).join('')}
@@ -363,12 +363,12 @@
       <div class="row"><label for="sct" class="sub">Show me</label><select class="pick" id="sct">${ids.map(t => `<option value="${t}" ${t === me ? 'selected' : ''}>${esc(T[t].name)}</option>`).join('')}</select></div>
       <div class="stats">
         <div><b>${rec(cur)}</b><span>Record now</span></div><div><b>${pct(p, 0)}</b><span>Playoffs</span></div>
-        <div><b>${pct(R.seed[mi][0] / N, 0)}</b><span>#1 seed</span></div><div><b>#${top(R.seed[mi]) + 1}</b><span>Most likely seed</span></div>
+        <div><b>#${top(R.seed[mi]) + 1}</b><span>Most likely seed</span></div>
       </div>
       <p class="callout">${headline}</p>
       <h2>What each finish gets ${esc(T[me].name)}</h2>
-      <div class="scroll"><table><thead><tr><th class="l">Final record</th><th>How likely</th><th>Playoffs</th><th>#1 seed</th><th>Most likely seed</th><th class="l">Possible seeds</th></tr></thead><tbody>
-        ${rows.map(x => `<tr><td class="l"><b>${recLabel(x.w)}</b> <span class="sub">${x.w - cur.w === left ? 'wins out' : x.w === cur.w ? 'loses out' : `${x.w - cur.w} of ${left}`}</span></td><td>${pct(x.r.n / N, 0)}</td><td><b>${pct(share(x.r.seeds, 0, k) / x.r.n, 0)}</b></td><td>${pct(x.r.seeds[0] / x.r.n, 0)}</td><td>#${top(x.r.seeds) + 1}</td><td class="l">${range(x.r.seeds)}</td></tr>`).join('')}
+      <div class="scroll"><table><thead><tr><th class="l">Final record</th><th>How likely</th><th>Playoffs</th><th>Most likely seed</th><th class="l">Possible seeds</th></tr></thead><tbody>
+        ${rows.map(x => `<tr><td class="l"><b>${recLabel(x.w)}</b> <span class="sub">${x.w - cur.w === left ? 'wins out' : x.w === cur.w ? 'loses out' : `${x.w - cur.w} of ${left}`}</span></td><td>${pct(x.r.n / N, 0)}</td><td><b>${pct(share(x.r.seeds, 0, k) / x.r.n, 0)}</b></td><td>#${top(x.r.seeds) + 1}</td><td class="l">${range(x.r.seeds)}</td></tr>`).join('')}
       </tbody></table></div>
       ${root.length ? `<h2>Who to root for in week ${D.week}</h2><ul class="feed">${root.slice(0, 5).map(x => `<li><b>${esc(T[x.win].name)}</b> over ${esc(T[x.lose].name)} <span class="sub">worth ${(100 * x.d).toFixed(1)} points of ${metric[0]}</span></li>`).join('')}</ul>` : ''}`;
     $('#sct').addEventListener('change', e => { SC.team = e.target.value; try { localStorage.setItem('bettor', SC.team); } catch (e) {} viewScenarios(); });

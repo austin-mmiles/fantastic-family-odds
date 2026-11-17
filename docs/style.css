@@ -121,7 +121,7 @@ select.pick, input.pick { font: 500 1rem var(--body); padding: 8px 10px; border:
 
 .chart { overflow-x: auto; }
 .chart svg { min-width: 640px; }
-.rec-m { display: none; }
+.rec-m { display: none; white-space: nowrap; }
 @media (max-width: 720px) {
   .hm { display: none; }
   .rec-m { display: inline; }
