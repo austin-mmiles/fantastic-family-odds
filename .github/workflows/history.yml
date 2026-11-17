@@ -1,0 +1,39 @@
+name: Update history
+
+# All-time history (champions, top scores, all-time records) barely changes mid-week, so this runs once a
+# day rather than on the main 10-minute odds cadence.
+on:
+  schedule:
+    - cron: "17 13 * * *"   # once a day
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-history
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch league history
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+        run: python -m pipeline.history
+      - name: Publish
+        run: |
+          git config user.name "odds-bot"
+          git config user.email "odds-bot@users.noreply.github.com"
+          git add docs/data/alltime.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Update all-time history"
+          git pull --rebase
+          git push
