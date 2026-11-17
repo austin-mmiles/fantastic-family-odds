@@ -115,6 +115,12 @@ three `--no-*` flags from `update.yml`.
   table (`sortHead`/`wireSort` helpers in `docs/app.js`, reusable for other tables later); added a head-to-head
   section to the History tab (career record between any two owners, from a new `h2h` map in `alltime.json`
   aggregated by owner across every season, built in `pipeline/history.py`'s `build()`).
+- [x] 2026-11-17: fixed a post-deploy regression from the above — GitHub Pages' CDN kept serving a stale cached
+  `app.js` (from before the vig/Players removal) even after the HTML updated, so the live site threw
+  `TypeError: Cannot set properties of null (setting 'value')` on the removed `#vig` element and never rendered
+  past "Loading the board…". `index.html` now loads `app.js?v=2`; bump that query param on any future `app.js`
+  change that doesn't already land in a differently-named file, since GH Pages' CDN cache is more persistent than
+  its normal cache-control headers suggest.
 - [ ] Playoff weeks (this league's bracket runs to week 17 too, 8 teams, 3 rounds) tested on sample data only;
   recheck once ESPN posts the 2026 bracket.
 - [ ] D/ST statIds 89/90/92/93 unconfirmed (see Scoring above) — low priority, display-only.
