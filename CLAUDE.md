@@ -120,7 +120,12 @@ three `--no-*` flags from `update.yml`.
   `TypeError: Cannot set properties of null (setting 'value')` on the removed `#vig` element and never rendered
   past "Loading the board…". `index.html` now loads `app.js?v=2`; bump that query param on any future `app.js`
   change that doesn't already land in a differently-named file, since GH Pages' CDN cache is more persistent than
-  its normal cache-control headers suggest.
+  its normal cache-control headers suggest. 2026-11-17 follow-up: `style.css` has the exact same problem (no
+  version query string of its own), so a CSS-only change can render stale even after `app.js`/`index.html` are
+  confirmed fresh — `index.html` now also loads `style.css?v=3`. **Bump both `app.js?v=N` and `style.css?v=N`
+  together on every `docs/` push that touches either file**, and when verifying a deploy, do a real
+  `location.reload()` (or open a fresh tab) rather than just changing the URL hash — a hash-only navigation reuses
+  the already-loaded (possibly stale) document and never re-fetches anything.
 - [x] 2026-11-17, mobile/UI pass per Austin's feedback: found the real cause of the Board's "filter" looking
   misaligned — the metric-selector pills under "How the odds have moved" just wrapped unevenly at phone widths;
   now a clean 2-column grid under 720px (`.seg` media query). Also found `.wallet` (Playoff picture's team
