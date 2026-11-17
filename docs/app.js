@@ -103,7 +103,7 @@
     const lede = D.season_over
       ? `${esc(T[fav.id].name)} won the ${D.league.season} title.`
       : `${esc(T[fav.id].name)} leads the board at ${pct(fav.title)} to win it all.` + (mover && Math.abs(mover.d) >= 0.005 ? ` Biggest move since last week: ${esc(T[mover.r.id].name)}, ${mover.d > 0 ? 'up' : 'down'} ${Math.abs(100 * mover.d).toFixed(1)} points.` : '');
-    const cols = [{ label: 'Team', cls: 'l' }, { key: 'rec', label: 'Record', cls: 'hm' }, { key: 'pf', label: 'Points for', cls: 'hm' },
+    const cols = [{ label: '', cls: 'rank' }, { label: 'Team', cls: 'l' }, { key: 'rec', label: 'Record', cls: 'hm' }, { key: 'pf', label: 'Points for', cls: 'hm' },
       { key: 'playoffs', label: 'Playoffs' }, { key: 'bye', label: '#1 seed', cls: 'hm' }, { key: 'title', label: 'Title' }, { label: 'Price' },
       { key: 'delta', label: 'Since last week', cls: 'hm' }, { label: 'Title trend', cls: 'l hm' }];
     const sortVal = (r, k) => k === 'rec' ? (r.w + 0.5 * (r.t || 0)) / Math.max(1, r.w + r.l + (r.t || 0)) : k === 'delta' ? r.title - (prevSnap?.teams[r.id]?.title ?? r.title) : r[k];
@@ -354,17 +354,18 @@
     const heat = v => v < 0.005 ? '' : `background:color-mix(in srgb, var(--board) ${Math.round(8 + 72 * v)}%, transparent);${v > 0.45 ? 'color:var(--board-ink)' : ''}`;
     app.innerHTML = `<h1>Playoff picture</h1>
       <p class="lede">How the remaining regular-season games are likely to shake out, from ${N.toLocaleString('en-US')} simulated finishes. The top ${k} seeds make the playoffs and the #1 seed gets a bye.</p>
+      <h2>Seeds for everyone</h2>
+      <div class="scroll"><table class="seedgrid"><thead><tr><th class="l">Team</th><th>Wins</th><th>Playoffs</th>${ids.map((_, i) => `<th class="${i === k - 1 ? 'cut' : ''}">#${i + 1}</th>`).join('')}</tr></thead><tbody>
+        ${all.map(x => `<tr class="${x.id === me ? 'is-on' : ''}"><td class="l">${teamLink(x.id)}</td><td>${x.avgW.toFixed(1)}</td><td><b>${pct(x.po, 0)}</b></td>${R.seed[x.i].map((c, i) => `<td class="${i === k - 1 ? 'cut' : ''}" style="${heat(c / N)}">${c / N >= 0.005 ? Math.round(100 * c / N) : ''}</td>`).join('')}</tr>`).join('')}
+      </tbody></table></div>
+      <p class="sub">Each cell is the percent of simulated finishes with that seed. Ties in record are broken by total points scored, so close races also depend on how much each team scores.</p>
+      <h2>Pick a team</h2>
       <div class="row"><label for="sct" class="sub">Show me</label><select class="pick" id="sct">${ids.map(t => `<option value="${t}" ${t === me ? 'selected' : ''}>${esc(T[t].name)}</option>`).join('')}</select></div>
       <div class="stats">
         <div><b>${rec(cur)}</b><span>Record now</span></div><div><b>${pct(p, 0)}</b><span>Playoffs</span></div>
         <div><b>${pct(R.seed[mi][0] / N, 0)}</b><span>#1 seed</span></div><div><b>#${top(R.seed[mi]) + 1}</b><span>Most likely seed</span></div>
       </div>
       <p class="callout">${headline}</p>
-      <h2>Seeds for everyone</h2>
-      <div class="scroll"><table class="seedgrid"><thead><tr><th class="l">Team</th><th>Wins</th><th>Playoffs</th>${ids.map((_, i) => `<th class="${i === k - 1 ? 'cut' : ''}">#${i + 1}</th>`).join('')}</tr></thead><tbody>
-        ${all.map(x => `<tr class="${x.id === me ? 'is-on' : ''}"><td class="l">${teamLink(x.id)}</td><td>${x.avgW.toFixed(1)}</td><td><b>${pct(x.po, 0)}</b></td>${R.seed[x.i].map((c, i) => `<td class="${i === k - 1 ? 'cut' : ''}" style="${heat(c / N)}">${c / N >= 0.005 ? Math.round(100 * c / N) : ''}</td>`).join('')}</tr>`).join('')}
-      </tbody></table></div>
-      <p class="sub">Each cell is the percent of simulated finishes with that seed. Ties in record are broken by total points scored, so close races also depend on how much each team scores.</p>
       <h2>What each finish gets ${esc(T[me].name)}</h2>
       <div class="scroll"><table><thead><tr><th class="l">Final record</th><th>How likely</th><th>Playoffs</th><th>#1 seed</th><th>Most likely seed</th><th class="l">Possible seeds</th></tr></thead><tbody>
         ${rows.map(x => `<tr><td class="l"><b>${recLabel(x.w)}</b> <span class="sub">${x.w - cur.w === left ? 'wins out' : x.w === cur.w ? 'loses out' : `${x.w - cur.w} of ${left}`}</span></td><td>${pct(x.r.n / N, 0)}</td><td><b>${pct(share(x.r.seeds, 0, k) / x.r.n, 0)}</b></td><td>${pct(x.r.seeds[0] / x.r.n, 0)}</td><td>#${top(x.r.seeds) + 1}</td><td class="l">${range(x.r.seeds)}</td></tr>`).join('')}

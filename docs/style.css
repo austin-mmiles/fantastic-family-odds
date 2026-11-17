@@ -18,10 +18,12 @@ nav { display: flex; flex-wrap: wrap; gap: 4px 18px; flex: 1; }
 nav a { font: 600 1.15rem/1 var(--display); text-decoration: none; padding: 8px 0; border-bottom: 3px solid transparent; opacity: .8; }
 nav a[aria-current] { border-color: var(--board-ink); opacity: 1; }
 @media (max-width: 720px) {
-  .mast { gap: 2px 16px; padding: 10px clamp(16px, 4vw, 40px); }
-  .brand { font-size: 1.35rem; }
-  nav { flex: 1 1 100%; gap: 2px 14px; }
-  nav a { font-size: .98rem; padding: 4px 0; }
+  .mast { gap: 10px 16px; padding: 10px 0 10px clamp(16px, 4vw, 40px); align-items: stretch; }
+  .brand { font-size: 1.35rem; padding-right: clamp(16px, 4vw, 40px); }
+  nav { flex: 1 1 100%; flex-wrap: nowrap; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; padding: 2px clamp(16px, 4vw, 40px) 6px 0; margin-right: -1px; }
+  nav::-webkit-scrollbar { display: none; }
+  nav a { font-size: 1.02rem; padding: 10px 16px; border: 1px solid rgba(255,255,255,.22); border-bottom: 1px solid rgba(255,255,255,.22); border-radius: 99px; opacity: .92; white-space: nowrap; flex: none; scroll-snap-align: start; }
+  nav a[aria-current] { background: var(--board-ink); color: var(--board); border-color: var(--board-ink); opacity: 1; }
 }
 #banner { background: var(--hi); padding: 10px clamp(16px, 4vw, 40px); font-size: .92rem; border-bottom: 1px solid var(--rule); }
 main { max-width: 1180px; margin: 0 auto; padding: 28px clamp(16px, 4vw, 40px) 60px; }

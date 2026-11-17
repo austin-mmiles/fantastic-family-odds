@@ -138,6 +138,18 @@ three `--no-*` flags from `update.yml`.
   brand on phone widths (brand text left little room beside it); fixed by forcing `nav` to its own full-width row
   under 720px so it wraps normally, 3-ish links per line. Verified with local Playwright screenshots at 390×844
   (iPhone) and 1280×900 (desktop) before pushing — no console errors, no visual regressions on desktop.
+- [x] 2026-11-17, round 2 per Austin's feedback (screenshots from his phone): found the actual root cause of the
+  Board header looking misaligned with the data — it was never the sortable-filter styling, it's that the body
+  row's `<td class="rank">` (the 1/2/3… number) has no matching `<th>` in the header, so every header label was
+  silently shifted one column left of its data in `<table>` layout. Fixed by adding a blank leading `<th
+  class="rank">` to `viewBoard()`'s `cols` array — sorting is unaffected and kept, since removing it wouldn't
+  have fixed the alignment. Nav tabs: replaced the two-row wrap from the previous pass with a single-row,
+  horizontally-scrollable pill strip on mobile (bigger touch targets, `aria-current` tab filled solid so the
+  active one is obvious, next pill visibly peeking off the right edge as a scroll affordance). Playoff picture:
+  reordered so "Seeds for everyone" is now the first section (no team pick needed to see it), with the
+  team-picker ("Pick a team": the "Show me" select, stat tiles, headline, "What each finish gets you") below it —
+  opposite of the previous pass's order, which Austin asked to flip back. Verified again with local Playwright
+  screenshots (390×844 and 1280×900) before pushing.
 - [ ] Playoff weeks (this league's bracket runs to week 17 too, 8 teams, 3 rounds) tested on sample data only;
   recheck once ESPN posts the 2026 bracket.
 - [ ] D/ST statIds 89/90/92/93 unconfirmed (see Scoring above) — low priority, display-only.
