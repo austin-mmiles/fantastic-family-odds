@@ -12,16 +12,12 @@
   }
   const T = D.teams_meta, ids = Object.keys(T);
   const snaps = H.snapshots || [];
-  let vig = 0;
-  try { vig = parseFloat(localStorage.getItem('vig') || '0') || 0; } catch (e) {}
-  const vigSel = $('#vig'); vigSel.value = String(vig);
-  vigSel.addEventListener('change', () => { vig = parseFloat(vigSel.value); try { localStorage.setItem('vig', vig); } catch (e) {} route(); });
 
   // ---------- formatting ----------
   const pct = (p, d = 1) => p == null ? '–' : (p > 0 && p < 0.001 ? '<0.1' : (100 * p).toFixed(p >= 0.9995 ? 0 : d)) + '%';
-  function price(p) {              // American odds, with the chosen vig applied
+  function price(p) {              // fair American odds (no vig: this board is for projections, not betting)
     if (p == null) return '–';
-    const q = Math.min(p * (1 + vig), 0.995);
+    const q = Math.min(p, 0.995);
     if (q < 0.0005) return 'Off';
     const a = q >= 0.5 ? -100 * q / (1 - q) : 100 * (1 - q) / q;
     const r = Math.abs(a) >= 1000 ? Math.round(a / 50) * 50 : Math.abs(a) >= 300 ? Math.round(a / 5) * 5 : Math.round(a);
@@ -81,26 +77,56 @@
   const METRICS = { title: 'Win the title', playoffs: 'Make the playoffs', bye: 'Earn the #1 seed', final: 'Reach the final', exp_wins: 'Expected wins' };
   let boardMetric = 'title';
 
+  // ---------- sortable tables ----------
+  function sortHead(cols, st) {    // cols: [{key, label, cls}] (no key = not sortable); st: {key, dir}
+    return cols.map(c => {
+      if (!c.key) return `<th class="${c.cls || ''}">${c.label}</th>`;
+      const on = st.key === c.key, arrow = on ? (st.dir < 0 ? ' ▼' : ' ▲') : '';
+      return `<th class="${c.cls || ''} sortable" data-k="${c.key}" aria-sort="${on ? (st.dir < 0 ? 'descending' : 'ascending') : 'none'}">${c.label}${arrow}</th>`;
+    }).join('');
+  }
+  function wireSort(table, st, redraw) {
+    table.querySelector('thead').addEventListener('click', e => {
+      const th = e.target.closest('th[data-k]'); if (!th) return;
+      const k = th.dataset.k;
+      st.dir = st.key === k ? -st.dir : -1;
+      st.key = k;
+      redraw();
+    });
+  }
+
+  let boardSort = { key: 'title', dir: -1 };
   function viewBoard() {
-    const rows = ids.map(id => ({ id, ...D.teams[id] })).sort((a, b) => b.title - a.title || b.playoffs - a.playoffs);
-    const fav = rows[0];
-    const mover = prevSnap ? rows.map(r => ({ r, d: r.title - (prevSnap.teams[r.id]?.title ?? r.title) })).sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0] : null;
+    const byTitle = ids.map(id => ({ id, ...D.teams[id] })).sort((a, b) => b.title - a.title || b.playoffs - a.playoffs);
+    const fav = byTitle[0];
+    const mover = prevSnap ? byTitle.map(r => ({ r, d: r.title - (prevSnap.teams[r.id]?.title ?? r.title) })).sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0] : null;
     const lede = D.season_over
       ? `${esc(T[fav.id].name)} won the ${D.league.season} title.`
       : `${esc(T[fav.id].name)} leads the board at ${pct(fav.title)} to win it all.` + (mover && Math.abs(mover.d) >= 0.005 ? ` Biggest move since last week: ${esc(T[mover.r.id].name)}, ${mover.d > 0 ? 'up' : 'down'} ${Math.abs(100 * mover.d).toFixed(1)} points.` : '');
+    const cols = [{ label: 'Team', cls: 'l' }, { key: 'rec', label: 'Record', cls: 'hm' }, { key: 'pf', label: 'Points for', cls: 'hm' },
+      { key: 'playoffs', label: 'Playoffs' }, { key: 'bye', label: '#1 seed', cls: 'hm' }, { key: 'title', label: 'Title' }, { label: 'Price' },
+      { key: 'delta', label: 'Since last week', cls: 'hm' }, { label: 'Title trend', cls: 'l hm' }];
+    const sortVal = (r, k) => k === 'rec' ? (r.w + 0.5 * (r.t || 0)) / Math.max(1, r.w + r.l + (r.t || 0)) : k === 'delta' ? r.title - (prevSnap?.teams[r.id]?.title ?? r.title) : r[k];
     app.innerHTML = `<h1>${esc(D.league.name)} title odds, ${weekLabel.toLowerCase() === 'final' ? 'final' : weekLabel}</h1>
       <p class="lede">${lede}</p>
       ${liveBar()}
       <div class="scroll"><table class="board">
-        <thead><tr><th class="l" colspan="2">Team</th><th class="hm">Record</th><th class="hm">Points for</th><th>Playoffs</th><th class="hm">#1 seed</th><th>Title</th><th>Price</th><th class="hm">Since last week</th><th class="l hm">Title trend</th></tr></thead>
-        <tbody>${rows.map((r, i) => `<tr data-id="${r.id}"><td class="rank">${i + 1}</td><td class="l">${teamLink(r.id)}<span class="sub rec-m"> ${rec(r)}</span></td><td class="hm">${rec(r)}</td><td class="hm">${r.pf.toFixed(1)}</td>
-          <td>${pct(r.playoffs)}</td><td class="hm">${pct(r.bye)}</td><td><b>${pct(r.title)}</b></td><td class="price ${i === 0 ? 'fav' : ''}">${price(r.title)}</td>
-          <td class="hm">${delta(r.title, prevSnap?.teams[r.id]?.title)}</td><td class="l hm">${spark(series(r.id, 'title'), T[r.id].color)}</td></tr>`).join('')}</tbody>
+        <thead><tr>${sortHead(cols, boardSort)}</tr></thead><tbody id="board-body"></tbody>
       </table></div>
       <h2>How the odds have moved</h2>
       <div class="row"><div class="seg" role="group" aria-label="Chart metric">${Object.entries(METRICS).map(([k, v]) => `<button data-m="${k}" aria-pressed="${k === boardMetric}">${v}</button>`).join('')}</div></div>
       <div class="chart" id="trend"></div>
       <p class="sub">Each point is the model's estimate going into that week. Hover or tap a line to isolate a team.${snaps.some(s => s.rebuilt) ? ' Weeks before the site launched were rebuilt after the fact and are approximate.' : ''}</p>`;
+    const table = app.querySelector('.board');
+    const drawBody = () => {
+      const rows = byTitle.slice().sort((a, b) => boardSort.dir * (sortVal(a, boardSort.key) - sortVal(b, boardSort.key)));
+      table.querySelector('thead tr').innerHTML = sortHead(cols, boardSort);
+      $('#board-body', table).innerHTML = rows.map((r, i) => `<tr data-id="${r.id}"><td class="rank">${i + 1}</td><td class="l">${teamLink(r.id)}<span class="sub rec-m"> ${rec(r)}</span></td><td class="hm">${rec(r)}</td><td class="hm">${r.pf.toFixed(1)}</td>
+          <td>${pct(r.playoffs)}</td><td class="hm">${pct(r.bye)}</td><td><b>${pct(r.title)}</b></td><td class="price ${r.id === fav.id ? 'fav' : ''}">${price(r.title)}</td>
+          <td class="hm">${delta(r.title, prevSnap?.teams[r.id]?.title)}</td><td class="l hm">${spark(series(r.id, 'title'), T[r.id].color)}</td></tr>`).join('');
+    };
+    drawBody();
+    wireSort(table, boardSort, drawBody);
     const trend = $('#trend');
     const draw = () => {
       const raw = boardMetric === 'exp_wins';
@@ -221,24 +247,6 @@
       <h2>Seeding chances</h2>
       <div class="scroll"><table><thead><tr>${t.seed_dist.map((_, i) => `<th>#${i + 1}</th>`).join('')}</tr></thead><tbody><tr>${t.seed_dist.map((p, i) => `<td style="${i < D.league.playoff_teams ? '' : 'color:var(--muted)'}">${p >= 0.0005 ? pct(p, 0) : '–'}</td>`).join('')}</tr></tbody></table></div>
       <p class="sub">The top ${D.league.playoff_teams} seeds make the playoffs.</p>`;
-  }
-
-  let pPos = 'All', pQ = '', pSort = 'ros_total';
-  function viewPlayers() {
-    const posList = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'D/ST'];
-    app.innerHTML = `<h1>Player outlook</h1><p class="lede">Every rostered player, ranked by projected points for the rest of the fantasy season (through week ${D.league.last_week}).</p>
-      <div class="row"><div class="seg" role="group" aria-label="Position">${posList.map(p => `<button data-p="${p}" aria-pressed="${p === pPos}">${p}</button>`).join('')}</div>
-      <input class="pick" id="q" type="search" placeholder="Find a player" aria-label="Find a player" value="${esc(pQ)}">
-      <select class="pick" id="ps" aria-label="Sort by"><option value="ros_total">Sort: rest of season total</option><option value="ros_avg">Sort: per game</option><option value="wk">Sort: this week</option><option value="ceil">Sort: ceiling</option><option value="boom">Sort: boom chance</option><option value="sos">Sort: easiest schedule</option></select></div><div id="plist"></div>`;
-    $('#ps').value = pSort;
-    const draw = () => {
-      const list = D.players.filter(p => (pPos === 'All' || p.pos === pPos) && (!pQ || p.name.toLowerCase().includes(pQ.toLowerCase()))).sort((a, b) => (b[pSort] ?? -1) - (a[pSort] ?? -1)).slice(0, 150);
-      $('#plist').innerHTML = list.length ? rosterTable(list, true) : '<p class="empty">No players match. Clear the search or pick another position.</p>';
-    };
-    draw();
-    app.querySelector('.seg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; pPos = b.dataset.p; app.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b)); draw(); });
-    $('#q').addEventListener('input', e => { pQ = e.target.value; draw(); });
-    $('#ps').addEventListener('change', e => { pSort = e.target.value; draw(); });
   }
 
   function viewAbout() {
@@ -379,7 +387,9 @@
   }
 
   // ---------- league history ----------
-  let AT = null, atErr = false;
+  let AT = null, atErr = false, recordSort = { key: 'wp', dir: -1 }, hA = null, hB = null;
+  const RECORD_COLS = [{ key: 'owner', label: 'Owner', cls: 'l' }, { key: 'w', label: 'Record' }, { key: 'wp', label: 'Win %' },
+    { key: 'seasons', label: 'Seasons' }, { key: 'titles', label: 'Titles' }, { key: 'pf', label: 'Points for' }];
   async function viewHistory() {
     if (!AT && !atErr) {
       app.innerHTML = '<h1>History</h1><p class="loading">Loading league history…</p>';
@@ -389,6 +399,10 @@
     if (!AT) { app.innerHTML = '<h1>History</h1><p class="empty">All-time history has not been published yet. Run the "Update history" workflow in the repository\'s Actions tab, then reload.</p>'; return; }
     const champBy = {}; AT.champions.forEach(c => { (champBy[c.owner] = champBy[c.owner] || []).push(c.y); });
     const span = `${AT.seasons[0]}–${AT.seasons[AT.seasons.length - 1]}`;
+    const h2hOwners = Object.keys(AT.h2h || {}).sort();
+    if (!hA || !h2hOwners.includes(hA)) hA = h2hOwners[0];
+    if (!hB || !h2hOwners.includes(hB) || hB === hA) hB = h2hOwners.find(o => o !== hA) || h2hOwners[0];
+    const h2hSel = (id, v) => `<select class="pick" id="${id}">${h2hOwners.map(o => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
     app.innerHTML = `<h1>League history</h1>
       <p class="lede">${esc(D.league.name)}, ${span}: ${AT.seasons.length} seasons on the books.</p>
       <h2>Champions</h2>
@@ -404,11 +418,32 @@
       ${AT.top_seasons.map((r, i) => `<tr><td class="l">${i + 1}. ${esc(r.team)}</td><td class="l">${esc(r.owner || '–')}</td><td>${r.y}</td><td><b>${r.pf.toFixed(1)}</b></td></tr>`).join('')}
       </tbody></table></div>
       <h2>All-time records</h2>
-      <p class="lede">By owner, across every team and season they have run, best winning percentage first.</p>
-      <div class="scroll"><table><thead><tr><th class="l">Owner</th><th>Record</th><th>Win %</th><th>Seasons</th><th>Titles</th><th>Points for</th></tr></thead><tbody>
-      ${AT.records.map(r => { const gp = r.w + r.l + r.t, wp = gp ? (r.w + 0.5 * r.t) / gp : 0; return `<tr><td class="l">${esc(r.owner)}${champBy[r.owner] ? ` <span class="sub">${champBy[r.owner].length}x champ</span>` : ''}</td><td>${r.w}-${r.l}${r.t ? '-' + r.t : ''}</td><td><b>${(100 * wp).toFixed(1)}%</b></td><td>${r.seasons}</td><td>${r.titles || '–'}</td><td>${r.pf.toFixed(0)}</td></tr>`; }).join('')}
-      </tbody></table></div>
-      <p class="sub">Records are aggregated by the ESPN account that owned each team each season; a renamed or re-founded team under the same owner still counts.</p>`;
+      <p class="lede">By owner, across every team and season they have run.</p>
+      <div class="scroll"><table id="recs"><thead><tr>${sortHead(RECORD_COLS, recordSort)}</tr></thead><tbody id="recs-body"></tbody></table></div>
+      <p class="sub">Records are aggregated by the ESPN account that owned each team each season; a renamed or re-founded team under the same owner still counts.</p>
+      ${h2hOwners.length > 1 ? `<h2>Head to head</h2>
+      <p class="lede">Career record between any two owners, across every season they have both been in the league.</p>
+      <div class="row">${h2hSel('h2a', hA)}<span class="sub">against</span>${h2hSel('h2b', hB)}</div><div id="h2hbox"></div>` : ''}`;
+    const recWP = r => { const gp = r.w + r.l + r.t; return gp ? (r.w + 0.5 * r.t) / gp : 0; };
+    const recVal = (r, k) => k === 'wp' ? recWP(r) : k === 'owner' ? r.owner.toLowerCase() : r[k];
+    const recTable = $('#recs');
+    const drawRecs = () => {
+      const rows = AT.records.slice().sort((a, b) => recordSort.dir * (recVal(a, recordSort.key) < recVal(b, recordSort.key) ? -1 : recVal(a, recordSort.key) > recVal(b, recordSort.key) ? 1 : 0));
+      recTable.querySelector('thead tr').innerHTML = sortHead(RECORD_COLS, recordSort);
+      $('#recs-body', recTable).innerHTML = rows.map(r => `<tr><td class="l">${esc(r.owner)}${champBy[r.owner] ? ` <span class="sub">${champBy[r.owner].length}x champ</span>` : ''}</td><td>${r.w}-${r.l}${r.t ? '-' + r.t : ''}</td><td><b>${(100 * recWP(r)).toFixed(1)}%</b></td><td>${r.seasons}</td><td>${r.titles || '–'}</td><td>${r.pf.toFixed(0)}</td></tr>`).join('');
+    };
+    drawRecs();
+    wireSort(recTable, recordSort, drawRecs);
+    if (h2hOwners.length > 1) {
+      const showH2h = () => {
+        const rec = AT.h2h[hA] && AT.h2h[hA][hB];
+        $('#h2hbox').innerHTML = hA === hB ? '<p class="empty">Pick two different owners.</p>' : !rec ? '<p class="empty">These two have never faced each other.</p>' :
+          `<div class="stats"><div><b>${rec.w}-${rec.l}${rec.t ? '-' + rec.t : ''}</b><span>${esc(hA)} vs ${esc(hB)}, all-time</span></div></div>`;
+      };
+      $('#h2a').addEventListener('change', e => { hA = e.target.value; showH2h(); });
+      $('#h2b').addEventListener('change', e => { hB = e.target.value; showH2h(); });
+      showH2h();
+    }
   }
 
   // ---------- shell ----------
@@ -438,7 +473,7 @@
     const [, sec, arg] = (location.hash || '#/').split('/');
     const name = sec === 'team' ? 'teams' : (sec || 'board');
     document.querySelectorAll('nav a').forEach(a => a.dataset.nav === name ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
-    return ({ week: viewWeek, teams: viewTeams, team: () => viewTeam(arg), players: viewPlayers, about: viewAbout, history: viewHistory, scenarios: viewScenarios }[sec] || viewBoard)();
+    return ({ week: viewWeek, teams: viewTeams, team: () => viewTeam(arg), about: viewAbout, history: viewHistory, scenarios: viewScenarios }[sec] || viewBoard)();
   }
   addEventListener('hashchange', () => { route(); scrollTo(0, 0); });
   route();

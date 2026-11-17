@@ -18,7 +18,7 @@ def _get(api, season, current):
     import urllib.request
     url = (CBASE if season == current else HBASE + "?seasonId={season}").format(
         league=api.league_id, season=season)
-    url += ("&" if season == current else "&") + "view=mTeam&view=mMatchupScore"
+    url += ("?" if season == current else "&") + "view=mTeam&view=mMatchupScore"
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
     if api.s2 and api.swid:
         req.add_header("Cookie", f"espn_s2={api.s2}; SWID={api.swid}")
@@ -42,16 +42,19 @@ def fetch_season(api, season, current):
             "w": rec.get("wins", 0), "l": rec.get("losses", 0), "t": rec.get("ties", 0),
             "pf": rec.get("pointsFor", 0.0), "pa": rec.get("pointsAgainst", 0.0),
         })
-    weeks = {}
+    weeks, games = {}, []
     for m in L.get("schedule") or []:
         wk = m.get("matchupPeriodId")
-        for side in ("home", "away"):
-            s = m.get(side)
-            if s and s.get("totalPoints") is not None:
-                weeks.setdefault(wk, []).append({"t": s["teamId"], "p": s["totalPoints"]})
+        h, a = m.get("home"), m.get("away")
+        for side in (h, a):
+            if side and side.get("totalPoints") is not None:
+                weeks.setdefault(wk, []).append({"t": side["teamId"], "p": side["totalPoints"]})
+        if h and a and h.get("totalPoints") is not None and a.get("totalPoints") is not None:
+            games.append({"wk": wk, "h": h["teamId"], "a": a["teamId"], "hs": h["totalPoints"], "as": a["totalPoints"],
+                          "playoff": (m.get("playoffTierType") or "NONE") != "NONE"})
     members = {m["id"]: {"name": ((m.get("firstName") or "") + " " + (m.get("lastName") or "")).strip(),
                          "dn": m.get("displayName")} for m in L.get("members") or []}
-    return {"year": season, "teams": teams, "weeks": weeks, "members": members}
+    return {"year": season, "teams": teams, "weeks": weeks, "games": games, "members": members}
 
 
 def fetch_all(league_id, s2, swid, first, current, log=print):
@@ -77,18 +80,23 @@ def owner_name(owners, oid):
 
 
 def build(seasons, owners, current):
-    """-> {champions, top_weeks, top_seasons, records} using team-season display names, merged by owner name."""
+    """-> {champions, top_weeks, top_seasons, records, h2h} using team-season display names, merged by owner name."""
     week_scores, season_rows, champions = [], [], []
-    by_name = {}
+    by_name, h2h = {}, {}
+
+    def h2h_cell(a, b):
+        return h2h.setdefault(a, {}).setdefault(b, {"w": 0, "l": 0, "t": 0})
+
     for y, s in sorted(seasons.items()):
         team_name = {t["id"]: t["name"] for t in s["teams"]}
+        team_owner = {t["id"]: (owner_name(owners, (t["owners"] or [None])[0]) if t["owners"] else "Unknown") for t in s["teams"]}
         for wk, rows in s["weeks"].items():
             for row in rows:
                 week_scores.append({"y": y, "wk": wk, "team": team_name.get(row["t"], row["t"]), "p": round(row["p"], 2)})
         for t in s["teams"]:
-            oid = (t["owners"] or [None])[0]
-            name = owner_name(owners, oid) if oid else "Unknown"
-            season_rows.append({"y": y, "team": t["name"], "owner": name, "pf": round(t["pf"], 2)})
+            name = team_owner[t["id"]]
+            if y != current:    # a partial season's total isn't comparable to a full 14-week season
+                season_rows.append({"y": y, "team": t["name"], "owner": name, "pf": round(t["pf"], 2)})
             rec = by_name.setdefault(name, {"owner": name, "w": 0, "l": 0, "t": 0, "seasons": 0, "titles": 0, "pf": 0.0})
             rec["w"] += t["w"]; rec["l"] += t["l"]; rec["t"] += t["t"]; rec["seasons"] += 1; rec["pf"] += t["pf"]
             if t["rcf"] == 1 and y != current:
@@ -99,6 +107,17 @@ def build(seasons, owners, current):
                 oid = (champ["owners"] or [None])[0]
                 champions.append({"y": y, "team": champ["name"], "owner": owner_name(owners, oid) if oid else "Unknown",
                                    "seed": champ["seed"], "w": champ["w"], "l": champ["l"]})
+        for g in s.get("games") or []:
+            oh, oa = team_owner.get(g["h"]), team_owner.get(g["a"])
+            if not oh or not oa or oh == oa:
+                continue
+            ch, ca = h2h_cell(oh, oa), h2h_cell(oa, oh)
+            if g["hs"] > g["as"]:
+                ch["w"] += 1; ca["l"] += 1
+            elif g["hs"] < g["as"]:
+                ch["l"] += 1; ca["w"] += 1
+            else:
+                ch["t"] += 1; ca["t"] += 1
     week_scores.sort(key=lambda r: -r["p"])
     season_rows.sort(key=lambda r: -r["pf"])
     champions.sort(key=lambda r: r["y"])
@@ -107,7 +126,7 @@ def build(seasons, owners, current):
         r["pf"] = round(r["pf"], 2)
     return {
         "seasons": sorted(seasons), "champions": champions,
-        "top_weeks": week_scores[:10], "top_seasons": season_rows[:10], "records": records,
+        "top_weeks": week_scores[:10], "top_seasons": season_rows[:10], "records": records, "h2h": h2h,
     }
 
 

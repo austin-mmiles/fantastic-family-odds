@@ -100,18 +100,27 @@ three `--no-*` flags from `update.yml`.
 
 - [x] Forked from Love Mahomies 2026-11-16: sportsbook (Supabase ledger, bet slip, betting locks) stripped from
   `docs/app.js`/`index.html`/`style.css`; `docs/book-config.json` and `setup/supabase.sql` removed.
-- [x] `pipeline/history.py` written and tested against synthetic data; league 369973's structure, scoring and
-  14 seasons of history (2012-2025, plus 2026 in progress) confirmed live via ESPN's API.
-- [ ] GitHub repo `fantastic-family-odds` not yet created — waiting on Austin to create it (public) and grant the
-  Claude GitHub App access, same as Love Mahomies.
-- [ ] `ESPN_S2`/`ESPN_SWID` secrets not yet added to this repo (same ESPN account as Love Mahomies, so the same
-  cookie values should work, but Austin needs to confirm and add them himself — never commit these).
-- [ ] GitHub Pages not yet enabled for this repo.
-- [ ] Playoff weeks (15-17... this league's bracket runs to week 17 too, 8 teams, 3 rounds) tested on sample data
-  only; recheck once ESPN posts the 2026 bracket.
+- [x] Repo created, Pages enabled, ESPN secrets added, both workflows running live (2026-11-17). Data verified
+  against ESPN's own standings page for league 369973 — exact match on every team's W-L and points for.
+- [x] `pipeline/history.py` live and confirmed against real league data (14 seasons, 2012-2025, plus 2026 in
+  progress). Fixed 2026-11-17: the live-season URL was missing its leading `?` (both branches of the ternary used
+  `&`), so the whole current season silently dropped out of `fetch_season` on every run — this is why a top-10
+  single-week score from this season was missing from the first "Update history" run. `top_seasons` deliberately
+  excludes the in-progress season (a partial total isn't comparable to a full 14-week one); `top_weeks` does not,
+  since a finished week's score is already final.
+- [x] 2026-11-17, per Austin's feedback: removed the global Players tab (the per-team roster outlook on each
+  Team page is unaffected — only the all-players browse/search page is gone); removed the vig/"Prices" selector
+  entirely (this site is for seeing projections, not for pricing bets — `price()` now always shows fair odds,
+  no multiplier); added click-to-sort column headers on the Board table and the History page's all-time records
+  table (`sortHead`/`wireSort` helpers in `docs/app.js`, reusable for other tables later); added a head-to-head
+  section to the History tab (career record between any two owners, from a new `h2h` map in `alltime.json`
+  aggregated by owner across every season, built in `pipeline/history.py`'s `build()`).
+- [ ] Playoff weeks (this league's bracket runs to week 17 too, 8 teams, 3 rounds) tested on sample data only;
+  recheck once ESPN posts the 2026 bracket.
 - [ ] D/ST statIds 89/90/92/93 unconfirmed (see Scoring above) — low priority, display-only.
 - Ideas: re-derive Sleeper/advanced scoring for this league's rules so projections stop being ESPN-only; refit
-  `pipeline/config.py`'s volatility constants once this league has its own season of data.
+  `pipeline/config.py`'s volatility constants once this league has its own season of data; extend `sortHead`/
+  `wireSort` to the Teams and top-scores/top-seasons tables if that'd help.
 
 ## Working conventions
 
